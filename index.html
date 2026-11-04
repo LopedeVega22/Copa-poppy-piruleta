@@ -80,13 +80,14 @@ input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--err)}
 .role{font:600 1.05rem Fredoka,sans-serif;padding-top:30px;color:var(--cyan)}
 .sub .role{color:var(--muted)}
 .fee{display:flex;gap:16px;align-items:center;background:var(--input);border:1px dashed var(--accent);border-radius:6px;padding:16px 18px;margin-bottom:18px}
-.fee strong{font:800 2rem Fredoka,sans-serif;color:var(--accent)}
+.fee strong{font:800 2rem Fredoka,sans-serif;color:var(--accent);white-space:nowrap;flex:none}
 .check{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-weight:400}
 .check input{margin-top:6px;width:18px;height:18px;accent-color:var(--accent)}
 @media (max-width:700px){
   .grid{grid-template-columns:1fr}
   .player{grid-template-columns:1fr}
   .role{padding-top:0}
+  .fee{flex-direction:column;align-items:flex-start;gap:6px}
   form{padding:20px}
 }
 
@@ -268,7 +269,7 @@ footer p{margin:0}
         <legend>Pago</legend>
         <div class="fee">
           <strong>10 €</strong>
-          <div>por equipo, un solo pago. Hazlo por Bizum al <b>600 000 000</b> con el nombre del equipo como concepto.</div>
+          <div>por equipo, un solo pago. Para pagar, <b>contacta con un administrador en el <a href="https://discord.gg/6BABcxYsEz" target="_blank" rel="noopener noreferrer">Discord del torneo</a></b> e indícale el nombre de tu equipo.</div>
         </div>
         <label class="check"><input type="checkbox" id="paid"><span>He pagado o voy a pagar los 10 € de inscripción de mi equipo.</span></label>
         <div class="err" data-for="paid"></div>
@@ -281,7 +282,7 @@ footer p{margin:0}
 
     <div id="done" role="status" tabindex="-1">
       <h2>Equipo registrado</h2>
-      <p>Tu inscripción está guardada. Último paso: haz el Bizum de 10 € con el nombre del equipo como concepto; tu plaza se confirma cuando recibamos el pago. Este resumen es tu copia.</p>
+      <p>Tu inscripción está guardada. Último paso: contacta con un administrador en el <a href="https://discord.gg/6BABcxYsEz" target="_blank" rel="noopener noreferrer">Discord del torneo</a> para pagar los 10 € e indícale el nombre de tu equipo; tu plaza se confirma cuando se reciba el pago. Este resumen es tu copia.</p>
       <textarea id="summary" readonly aria-label="Resumen de la inscripción"></textarea>
       <div class="actions">
         <button class="btn" id="copy" type="button">Copiar resumen</button>
@@ -444,7 +445,7 @@ footer p{margin:0}
       var r = rankText(i);
       lines.push("- "+(i<5?ROLES[i]:"Suplente")+": "+n+(r?" ("+r+")":""));
     }
-    lines.push("","Pago: 10 € por Bizum, concepto \""+val("team")+"\"");
+    lines.push("","Pago: 10 € pendiente. Contactar con un administrador en el Discord del torneo (https://discord.gg/6BABcxYsEz)");
     return lines.join("\n");
   }
 
