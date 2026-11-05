@@ -506,7 +506,10 @@ footer p{margin:0}
   });
 
   form.addEventListener("input",function(e){
-    if(/^nick\d$/.test(e.target.id||"")) e.target.value = riotId(e.target.id);
+    if(/^nick\d$/.test(e.target.id||"")){
+      var raw = e.target.value, clean = raw.replace(/[\u2066-\u2069]/g,"");
+      if(clean!==raw) e.target.value = clean;
+    }
     if(e.target.id) setErr(e.target.id,"");
   });
 
