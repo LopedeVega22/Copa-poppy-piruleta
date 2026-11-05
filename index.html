@@ -98,6 +98,8 @@ input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--err)}
 .prow{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line)}
 .prow .pr{flex:none;width:4.8em;color:var(--muted);font-size:.85rem}
 .prow .pn{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.prow .pn a{color:inherit;text-decoration:none}
+.prow .pn a:hover,.prow .pn a:focus-visible{color:var(--cyan);text-decoration:underline}
 .prow .pk{display:block;color:var(--muted);font-size:.85rem;font-weight:400}
 .mday{margin:0 0 28px}
 .mrow{display:grid;grid-template-columns:1fr auto 1fr;gap:4px 12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface);margin-bottom:8px}
@@ -601,6 +603,11 @@ footer p{margin:0}
   }
 
   // ---- Equipos ----
+  var OPGG_REGION = "euw"; // el tag del Riot ID (lo de después de #) NO es la región: se asume EUW
+  function opgg(id){
+    var i = id.lastIndexOf("#");
+    return "https://www.op.gg/summoners/"+OPGG_REGION+"/"+encodeURIComponent(id.slice(0,i))+"-"+encodeURIComponent(id.slice(i+1));
+  }
   function renderTeams(){
     var order = ["Top","Jungla","Mid","ADC","Support","Suplente"], teams = {}, ROM = ["","I","II","III","IV"];
     PLAYERS.forEach(function(p){ (teams[p.team] = teams[p.team]||[]).push(p); });
@@ -609,12 +616,12 @@ footer p{margin:0}
     if(!names.length){
       h += '<p class="bnote">Todavía no hay equipos confirmados. Cada equipo aparece aquí cuando la organización confirma su inscripción.</p>';
     } else {
-      h += '<p class="bnote">'+names.length+' equipo'+(names.length===1?'':'s')+' confirmado'+(names.length===1?'':'s')+'.</p><div class="tgrid">';
+      h += '<p class="bnote">'+names.length+' equipo'+(names.length===1?'':'s')+' confirmado'+(names.length===1?'':'s')+'. Pulsa un Riot ID para ver su perfil en OP.GG.</p><div class="tgrid">';
       names.forEach(function(n){
         teams[n].sort(function(a,b){ return order.indexOf(a.role)-order.indexOf(b.role); });
         h += '<div class="tcard"><h3>'+esc(n)+'</h3>'+teams[n].map(function(p){
           var rank = p.tier ? p.tier+(p.division?" "+ROM[p.division]:"") : "";
-          return '<div class="prow"><span class="pr">'+esc(p.role)+'</span><span class="pn">'+esc(p.riot_id)+(rank?'<span class="pk">'+esc(rank)+'</span>':'')+'</span></div>';
+          return '<div class="prow"><span class="pr">'+esc(p.role)+'</span><span class="pn"><a href="'+esc(opgg(p.riot_id))+'" target="_blank" rel="noopener noreferrer" title="Ver perfil en OP.GG">'+esc(p.riot_id)+'</a>'+(rank?'<span class="pk">'+esc(rank)+'</span>':'')+'</span></div>';
         }).join("")+'</div>';
       });
       h += '</div>';
