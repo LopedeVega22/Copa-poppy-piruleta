@@ -92,6 +92,13 @@ input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--err)}
 }
 
 /* Pestañas */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.tcard{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:16px}
+.tcard h3{margin:0 0 8px}
+.prow{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line)}
+.prow .pr{flex:none;width:4.8em;color:var(--muted);font-size:.85rem}
+.prow .pn{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.prow .pk{display:block;color:var(--muted);font-size:.85rem;font-weight:400}
 .mday{margin:0 0 28px}
 .mrow{display:grid;grid-template-columns:1fr auto 1fr;gap:4px 12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface);margin-bottom:8px}
 .mrow .tn{font-weight:700}
@@ -239,6 +246,7 @@ footer p{margin:0}
       <button type="button" role="tab" id="tab-inscripcion" aria-controls="inscripcion" aria-selected="true" data-tab="inscripcion">Inscripción</button>
       <button type="button" role="tab" id="tab-bracket" aria-controls="bracket" aria-selected="false" tabindex="-1" data-tab="bracket">Liga y bracket</button>
       <button type="button" role="tab" id="tab-partidos" aria-controls="partidos" aria-selected="false" tabindex="-1" data-tab="partidos">Partidos</button>
+      <button type="button" role="tab" id="tab-equipos" aria-controls="equipos" aria-selected="false" tabindex="-1" data-tab="equipos">Equipos</button>
     </div>
 
     <div id="inscripcion" role="tabpanel" aria-labelledby="tab-inscripcion">
@@ -271,7 +279,7 @@ footer p{margin:0}
 
       <fieldset>
         <legend>Jugadores</legend>
-        <p style="color:var(--muted);margin-top:-6px">Pon el Riot ID completo, con el tag (por ejemplo, Invocador#EUW). El rango es opcional: elige el nivel y la división.</p>
+        <p style="color:var(--muted);margin-top:-6px">Pon el Riot ID completo, con el tag (por ejemplo, Invocador#EUW). El rango es opcional: elige el nivel y la división. Cuando el equipo se confirme, los Riot ID, roles y rangos se publicarán en la pestaña Equipos de la web.</p>
         <div id="players"></div>
       </fieldset>
 
@@ -313,6 +321,8 @@ footer p{margin:0}
     </div>
 
     <div id="partidos" role="tabpanel" aria-labelledby="tab-partidos" hidden></div>
+
+    <div id="equipos" role="tabpanel" aria-labelledby="tab-equipos" hidden></div>
   </div>
 </section>
 </main>
@@ -512,7 +522,7 @@ footer p{margin:0}
 
   // ---- Liga y playoff provisional ----
   // La organización añade aquí los equipos confirmados (máximo 10)
-  var STANDINGS = [], MATCHES = {};
+  var STANDINGS = [], MATCHES = {}, PLAYERS = [];
   function esc(t){ return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
   function slot(t,real,sc){ return '<div class="slot'+(real?'':' empty')+'">'+(real?esc(t):t)+(sc!=null?'<span style="float:right">'+sc+'</span>':'')+'</div>'; }
   function mt(id,a,b){ var m = MATCHES[id]||{}; return '<div class="match"><div class="mlabel">'+id+'</div>'+slot(m.team_a||a,!!m.team_a,m.score_a)+slot(m.team_b||b,!!m.team_b,m.score_b)+'</div>'; }
@@ -548,9 +558,9 @@ footer p{margin:0}
       '<h3 class="bh">Loser bracket</h3>'+lower+
       '<h3 class="bh">Gran final</h3>'+gf;
   }
-  renderBracket(); renderMatches();
-  Promise.all([api("standings?select=*"),api("public_matches?select=*")]).then(function(r){
-    STANDINGS = r[0]; r[1].forEach(function(m){ MATCHES[m.code] = m; }); renderBracket(); renderMatches();
+  renderBracket(); renderMatches(); renderTeams();
+  Promise.all([api("standings?select=*"),api("public_matches?select=*"),api("public_players?select=*").catch(function(){return [];})]).then(function(r){
+    STANDINGS = r[0]; r[1].forEach(function(m){ MATCHES[m.code] = m; }); PLAYERS = r[2]; renderBracket(); renderMatches(); renderTeams();
   }).catch(function(){});
 
   // ---- Partidos ----
@@ -590,8 +600,30 @@ footer p{margin:0}
     document.getElementById("partidos").innerHTML = h;
   }
 
+  // ---- Equipos ----
+  function renderTeams(){
+    var order = ["Top","Jungla","Mid","ADC","Support","Suplente"], teams = {}, ROM = ["","I","II","III","IV"];
+    PLAYERS.forEach(function(p){ (teams[p.team] = teams[p.team]||[]).push(p); });
+    var names = Object.keys(teams).sort(function(a,b){ return a.localeCompare(b,"es"); });
+    var h = '<h2>Equipos</h2>';
+    if(!names.length){
+      h += '<p class="bnote">Todavía no hay equipos confirmados. Cada equipo aparece aquí cuando la organización confirma su inscripción.</p>';
+    } else {
+      h += '<p class="bnote">'+names.length+' equipo'+(names.length===1?'':'s')+' confirmado'+(names.length===1?'':'s')+'.</p><div class="tgrid">';
+      names.forEach(function(n){
+        teams[n].sort(function(a,b){ return order.indexOf(a.role)-order.indexOf(b.role); });
+        h += '<div class="tcard"><h3>'+esc(n)+'</h3>'+teams[n].map(function(p){
+          var rank = p.tier ? p.tier+(p.division?" "+ROM[p.division]:"") : "";
+          return '<div class="prow"><span class="pr">'+esc(p.role)+'</span><span class="pn">'+esc(p.riot_id)+(rank?'<span class="pk">'+esc(rank)+'</span>':'')+'</span></div>';
+        }).join("")+'</div>';
+      });
+      h += '</div>';
+    }
+    document.getElementById("equipos").innerHTML = h;
+  }
+
   // ---- Pestañas ----
-  var NAMES = ["inscripcion","bracket","partidos"];
+  var NAMES = ["inscripcion","bracket","partidos","equipos"];
   function showTab(name,scroll){
     NAMES.forEach(function(n){
       var on = n===name, t = document.getElementById("tab-"+n);
