@@ -426,6 +426,7 @@ footer p{margin:0}
     return !msg;
   }
   function val(id){return document.getElementById(id).value.trim();}
+  function riotId(id){return val(id).replace(/[\u2066-\u2069]/g,"");}
 
   function validate(){
     var ok = true, first = null;
@@ -438,7 +439,7 @@ footer p{margin:0}
 
     var seen = {};
     for(var i=0;i<6;i++){
-      var id = "nick"+i, v = val(id), msg = "";
+      var id = "nick"+i, v = riotId(id), msg = "";
       if(i===5 && !v){ setErr(id,""); continue; }
       if(!/^.{3,16}#[A-Za-z0-9]{3,5}$/.test(v)) msg = "Usa el formato Nombre#TAG.";
       else if(seen[v.toLowerCase()]) msg = "Este Riot ID está repetido.";
@@ -464,7 +465,7 @@ footer p{margin:0}
       "Jugadores:"
     ];
     for(var i=0;i<6;i++){
-      var n = val("nick"+i);
+      var n = riotId("nick"+i);
       if(!n) continue;
       var r = rankText(i);
       lines.push("- "+(i<5?ROLES[i]:"Suplente")+": "+n+(r?" ("+r+")":""));
@@ -480,7 +481,7 @@ footer p{margin:0}
     btn.disabled = true; btn.textContent = "Enviando…";
     var players = [];
     for(var i=0;i<6;i++){
-      var n = val("nick"+i); if(!n) continue;
+      var n = riotId("nick"+i); if(!n) continue;
       var t = tierOf(val("tier"+i));
       players.push({role:i<5?ROLES[i]:"Suplente",riot_id:n,tier:val("tier"+i),division:(t&&t.d)?+val("div"+i):null});
     }
@@ -505,6 +506,7 @@ footer p{margin:0}
   });
 
   form.addEventListener("input",function(e){
+    if(/^nick\d$/.test(e.target.id||"")) e.target.value = riotId(e.target.id);
     if(e.target.id) setErr(e.target.id,"");
   });
 
