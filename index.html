@@ -94,7 +94,8 @@ input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--err)}
 /* Pestañas */
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .tcard{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:16px}
-.tcard h3{margin:0 0 8px}
+.tcard h3{margin:0 0 8px;display:flex;align-items:center}
+.tcard h3 .ti{width:34px;height:34px;flex:none;margin-right:10px;font-size:.9rem}
 .prow{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line)}
 .prow .pr{flex:none;width:4.8em;color:var(--muted);font-size:.85rem}
 .prow .pn{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
@@ -669,6 +670,7 @@ footer p{margin:0}
   }
   function renderTeams(){
     var order = ["Top","Jungla","Mid","ADC","Support","Suplente"], teams = {}, ROM = ["","I","II","III","IV"];
+    var info = {}; STANDINGS.forEach(function(t){ info[t.name] = t; });
     PLAYERS.forEach(function(p){ (teams[p.team] = teams[p.team]||[]).push(p); });
     var names = Object.keys(teams).sort(function(a,b){ return a.localeCompare(b,"es"); });
     var h = '<h2>Equipos</h2>';
@@ -678,7 +680,7 @@ footer p{margin:0}
       h += '<p class="bnote">'+names.length+' equipo'+(names.length===1?'':'s')+' confirmado'+(names.length===1?'':'s')+'. Pulsa un Riot ID para ver su perfil en OP.GG.</p><div class="tgrid">';
       names.forEach(function(n){
         teams[n].sort(function(a,b){ return order.indexOf(a.role)-order.indexOf(b.role); });
-        h += '<div class="tcard"><h3>'+esc(n)+'</h3>'+teams[n].map(function(p){
+        h += '<div class="tcard"><h3>'+(info[n]?ico(info[n]):'')+esc(n)+'</h3>'+teams[n].map(function(p){
           var rank = p.tier ? p.tier+(p.division?" "+ROM[p.division]:"") : "";
           return '<div class="prow"><span class="pr">'+esc(p.role)+'</span><span class="pn"><a href="'+esc(opgg(p.riot_id))+'" target="_blank" rel="noopener noreferrer" title="Ver perfil en OP.GG">'+esc(p.riot_id)+'</a>'+(rank?'<span class="pk">'+esc(rank)+'</span>':'')+'</span></div>';
         }).join("")+'</div>';
