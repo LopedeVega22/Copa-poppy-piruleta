@@ -101,6 +101,8 @@ input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--err)}
 .prow .pn a{color:inherit;text-decoration:none}
 .prow .pn a:hover,.prow .pn a:focus-visible{color:var(--cyan);text-decoration:underline}
 .prow .pk{display:block;color:var(--muted);font-size:.85rem;font-weight:400}
+.ti{width:24px;height:24px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px}
+.ti.ph{display:inline-flex;align-items:center;justify-content:center;background:var(--line);color:var(--muted);font-size:.72rem;font-weight:700}
 .mday{margin:0 0 28px}
 .mrow{display:grid;grid-template-columns:1fr auto 1fr;gap:4px 12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface);margin-bottom:8px}
 .mrow .tn{font-weight:700}
@@ -260,6 +262,17 @@ footer p{margin:0}
             <label for="team">Nombre del equipo</label>
             <input type="text" id="team" name="team" maxlength="40" autocomplete="off">
             <div class="err" data-for="team"></div>
+          </div>
+          <div>
+            <label for="abbr">Abreviatura <small>(3-4 letras o números)</small></label>
+            <input type="text" id="abbr" name="abbr" autocomplete="off" style="text-transform:uppercase">
+            <div class="err" data-for="abbr"></div>
+          </div>
+          <div>
+            <label for="icon">Icono del equipo <small>(opcional: PNG, JPG o WebP)</small></label>
+            <input type="file" id="icon" name="icon" accept="image/png,image/jpeg,image/webp">
+            <img id="iconPreview" alt="Vista previa del icono" width="48" height="48" hidden style="margin-top:8px;border-radius:8px;object-fit:cover">
+            <div class="err" data-for="icon"></div>
           </div>
           <div>
             <label for="captain">Capitán <small>(nombre y apellidos)</small></label>
@@ -426,20 +439,59 @@ footer p{margin:0}
     return !msg;
   }
   function val(id){return document.getElementById(id).value.trim();}
-  function riotId(id){return val(id).replace(/[\u2066-\u2069]/g,"");}
+
+  // Abreviatura: solo letras/números, en mayúsculas
+  document.getElementById("abbr").addEventListener("input",function(){
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4);
+  });
+
+  // Icono: se recorta en cuadrado y se reduce en el navegador (queda en pocos KB)
+  var iconData = null, iconBusy = false, iconErr = "";
+  function shrink(img,size,q){
+    var c = document.createElement("canvas"); c.width = c.height = size;
+    var w = img.naturalWidth, h = img.naturalHeight, sw = Math.min(w,h);
+    c.getContext("2d").drawImage(img,(w-sw)/2,(h-sw)/2,sw,sw,0,0,size,size);
+    return c.toDataURL("image/webp",q);
+  }
+  document.getElementById("icon").addEventListener("change",function(){
+    var f = this.files[0], pv = document.getElementById("iconPreview");
+    iconData = null; iconErr = ""; pv.hidden = true; setErr("icon","");
+    if(!f) return;
+    if(!/^image\/(png|jpeg|webp)$/.test(f.type) || f.size>8*1024*1024){
+      iconErr = "Usa una imagen PNG, JPG o WebP de menos de 8 MB."; setErr("icon",iconErr); return;
+    }
+    iconBusy = true;
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onload = function(){
+      var d = shrink(img,96,.85);
+      if(d.length>28000) d = shrink(img,64,.7);
+      URL.revokeObjectURL(url); iconBusy = false;
+      if(d.length>28000 || !/^data:image\/(png|jpeg|webp);base64,/.test(d)){
+        iconErr = "No se pudo reducir la imagen. Prueba con otra."; setErr("icon",iconErr); return;
+      }
+      iconData = d; pv.src = d; pv.hidden = false;
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(url); iconBusy = false;
+      iconErr = "No se pudo leer la imagen. Prueba con otra."; setErr("icon",iconErr);
+    };
+    img.src = url;
+  });
 
   function validate(){
     var ok = true, first = null;
     function check(id,msg){ if(!setErr(id,msg)){ ok=false; if(!first) first=id; } }
 
     check("team", val("team").length<2 ? "Escribe el nombre del equipo." : "");
+    check("abbr", /^[A-Za-z0-9]{3,4}$/.test(val("abbr")) ? "" : "Escribe 3 o 4 letras o números.");
+    check("icon", iconBusy ? "Procesando la imagen, espera un momento." : iconErr);
     check("captain", val("captain").length<3 ? "Escribe el nombre del capitán." : "");
     check("email", /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val("email")) ? "" : "Escribe un email válido.");
     check("discord", val("discord").length<2 ? "Escribe el usuario de Discord del capitán." : "");
 
     var seen = {};
     for(var i=0;i<6;i++){
-      var id = "nick"+i, v = riotId(id), msg = "";
+      var id = "nick"+i, v = val(id), msg = "";
       if(i===5 && !v){ setErr(id,""); continue; }
       if(!/^.{3,16}#[A-Za-z0-9]{3,5}$/.test(v)) msg = "Usa el formato Nombre#TAG.";
       else if(seen[v.toLowerCase()]) msg = "Este Riot ID está repetido.";
@@ -457,7 +509,7 @@ footer p{margin:0}
     var lines = [
       "INSCRIPCIÓN COPA POPPY PIRULETA",
       "",
-      "Equipo: "+val("team"),
+      "Equipo: "+val("team")+" ("+val("abbr").toUpperCase()+")",
       "Capitán: "+val("captain"),
       "Email: "+val("email"),
       "Discord: "+val("discord"),
@@ -465,7 +517,7 @@ footer p{margin:0}
       "Jugadores:"
     ];
     for(var i=0;i<6;i++){
-      var n = riotId("nick"+i);
+      var n = val("nick"+i);
       if(!n) continue;
       var r = rankText(i);
       lines.push("- "+(i<5?ROLES[i]:"Suplente")+": "+n+(r?" ("+r+")":""));
@@ -481,12 +533,12 @@ footer p{margin:0}
     btn.disabled = true; btn.textContent = "Enviando…";
     var players = [];
     for(var i=0;i<6;i++){
-      var n = riotId("nick"+i); if(!n) continue;
+      var n = val("nick"+i); if(!n) continue;
       var t = tierOf(val("tier"+i));
       players.push({role:i<5?ROLES[i]:"Suplente",riot_id:n,tier:val("tier"+i),division:(t&&t.d)?+val("div"+i):null});
     }
     api("rpc/register_team",{method:"POST",body:JSON.stringify({p:{
-      team:val("team"),captain:val("captain"),email:val("email"),discord:val("discord"),players:players
+      team:val("team"),abbr:val("abbr").toUpperCase(),icon:iconData,captain:val("captain"),email:val("email"),discord:val("discord"),players:players
     }})}).then(function(){
       var text = buildSummary();
       summary.value = text;
@@ -497,6 +549,9 @@ footer p{margin:0}
       done.focus(); done.scrollIntoView({behavior:"smooth",block:"start"});
     }).catch(function(err){
       var M = {team_exists:["team","Ya hay un equipo con ese nombre."],
+               abbr_exists:["abbr","Esa abreviatura ya la usa otro equipo."],
+               invalid_abbr:["abbr","Usa 3 o 4 letras o números."],
+               invalid_icon:["icon","El icono no es válido. Prueba con otra imagen."],
                riot_exists:["nick0","Alguno de los Riot ID ya está inscrito en otro equipo."],
                busy:["rules","Hay demasiadas inscripciones pendientes. Inténtalo más tarde."]};
       var x = M[err.message] || ["rules","No se pudo registrar. Revisa los datos e inténtalo de nuevo."];
@@ -506,10 +561,6 @@ footer p{margin:0}
   });
 
   form.addEventListener("input",function(e){
-    if(/^nick\d$/.test(e.target.id||"")){
-      var raw = e.target.value, clean = raw.replace(/[\u2066-\u2069]/g,"");
-      if(clean!==raw) e.target.value = clean;
-    }
     if(e.target.id) setErr(e.target.id,"");
   });
 
@@ -531,8 +582,11 @@ footer p{margin:0}
   // La organización añade aquí los equipos confirmados (máximo 10)
   var STANDINGS = [], MATCHES = {}, PLAYERS = [];
   function esc(t){ return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
-  function slot(t,real,sc){ return '<div class="slot'+(real?'':' empty')+'">'+(real?esc(t):t)+(sc!=null?'<span style="float:right">'+sc+'</span>':'')+'</div>'; }
-  function mt(id,a,b){ var m = MATCHES[id]||{}; return '<div class="match"><div class="mlabel">'+id+'</div>'+slot(m.team_a||a,!!m.team_a,m.score_a)+slot(m.team_b||b,!!m.team_b,m.score_b)+'</div>'; }
+  function ico(t){
+    return t.icon ? '<img class="ti" src="'+esc(t.icon)+'" alt="">' : '<span class="ti ph" aria-hidden="true">'+esc(t.name.charAt(0).toUpperCase())+'</span>';
+  }
+  function slot(t,real,sc,full){ return '<div class="slot'+(real?'':' empty')+'"'+(full?' title="'+esc(full)+'"':'')+'>'+(real?esc(t):t)+(sc!=null?'<span style="float:right">'+sc+'</span>':'')+'</div>'; }
+  function mt(id,a,b){ var m = MATCHES[id]||{}; return '<div class="match"><div class="mlabel">'+id+'</div>'+slot(m.team_a_abbr||m.team_a||a,!!m.team_a,m.score_a,m.team_a)+slot(m.team_b_abbr||m.team_b||b,!!m.team_b,m.score_b,m.team_b)+'</div>'; }
   function round(title,ms,cls){ return '<div class="round'+(cls||"")+'"><h3>'+title+'</h3><div class="ms">'+ms.join("")+'</div></div>'; }
   function grid(rs){
     return '<div class="scroll"><div class="rounds" style="grid-template-columns:repeat('+rs.length+',minmax(210px,1fr));min-width:'+(rs.length*240)+'px">'+rs.join("")+'</div></div>';
@@ -541,7 +595,7 @@ footer p{margin:0}
     var rows = "", i;
     for(i=0;i<10;i++){
       var t = STANDINGS[i];
-      rows += '<tr><td>'+(i+1)+'</td><td'+(t?'':' class="empty"')+'>'+(t?esc(t.name):'Plaza libre')+'</td><td>'+(t?t.pj:0)+'</td><td>'+(t?t.g:0)+'</td><td>'+(t?t.p:0)+'</td><td>'+(t?t.pts:0)+'</td></tr>';
+      rows += '<tr><td>'+(i+1)+'</td><td'+(t?'':' class="empty"')+'>'+(t?ico(t)+esc(t.name):'Plaza libre')+'</td><td>'+(t?t.pj:0)+'</td><td>'+(t?t.g:0)+'</td><td>'+(t?t.p:0)+'</td><td>'+(t?t.pts:0)+'</td></tr>';
     }
     document.getElementById("league").innerHTML =
       '<thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>P</th><th>Pts</th></tr></thead><tbody>'+rows+'</tbody>';
